@@ -1,9 +1,53 @@
-import { useDispatch } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 import searchLogo from "../search-logo.png"
 import { toggleMenu } from "../utils/appSlice";
+import { useEffect, useState } from "react";
+import { YOUTUBE_SEARCH_API } from "../utils/constants";
+import { cacheResults } from "../utils/searchSlice";
 
 const Head = () => {
-  const dispatch = useDispatch();
+const [searchQuery, setSearchQuery] = useState("");
+const [suggestions, setSuggestions] = useState([]);
+const [showSuggestions, setShowSuggestions] = useState(false);
+
+const searchCache = useSelector((store) => store.search);
+const dispatch = useDispatch();
+ 
+
+/*
+* searchCache = {
+* "iphone" : ["iphone 11", "iphone 14"]}
+*
+* searchQuery = iphone 
+*/
+useEffect(() => {
+const timer = setTimeout(() => {
+  if(searchCache[searchQuery]) {
+    setSuggestions(searchCache[searchQuery]);
+  }
+  else{
+    getSearchSuggestions();
+  }
+  }, 200);
+
+return () => {
+  clearTimeout(timer);
+ };
+  }, [searchQuery]);
+
+  const getSearchSuggestions = async() => {
+    console.log("APT Call" + searchQuery);
+    const data = await fetch(YOUTUBE_SEARCH_API + searchQuery);
+    const json = await data.json();
+    // console.log(json[1]);
+    setSuggestions(json[1]);
+
+    //update cache
+    dispatch(cacheResults({
+      [searchQuery] : json[1],
+    }))
+  }
+
 
   const toggleMenuHandler = () => {
     dispatch(toggleMenu());
@@ -24,14 +68,33 @@ const Head = () => {
             src = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/YouTube_Logo_2017.svg/2560px-YouTube_Logo_2017.svg.png"/>
             </a>
         </div>
-        <div className='col-span-1 flex'>
-            <input className='w-5/6 rounded-l-full border border-gray-400 p-2'  type ="text" placeholder ="Search"/>
-            <button className='rounded-r-full border border-gray-400 px-2 py-1 bg-gray-100'>
+        <div className='col-span-1 '>
+          <div className="flex ">
+            <input className='px-5 w-5/6 rounded-l-full border border-gray-400'  type ="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setShowSuggestions(false)}
+            placeholder ="Search"
+            />
+            <button className=' h-10 px-4 rounded-r-full border border-gray-400 bg-gray-100'>
                 <img 
-                className='h-8'
+                className='h-7'
                 alt="search-logo"
                 src={searchLogo}/>
                 </button>
+        </div>
+       {showSuggestions && searchQuery &&(
+        <div className="relative ">
+          <ul className="absolute border left-0 border-gray-100 bg-white py-2 px-2 w-[32rem] shadow-lg rounded-lg z-50">
+            {suggestions.map((s) => (
+              <li key={s}className="py-2 px-3 hover:bg-gray-100 rounded-lg">{s}</li>
+            ))}
+            
+            
+          </ul>
+        </div>
+        )}
         </div>
         <div className='col-span-1 flex justify-end mx-5'>
             <img className='h-8' 
